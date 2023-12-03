@@ -1,11 +1,12 @@
 package main
 
 import (
-	"database/sql"
 	"log"
 	"context"
 	"fmt"
 	"os"
+	"io/ioutil"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -13,7 +14,6 @@ import (
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
-	_ "github.com/go-sql-driver/mysql"
 	"regexp"
 	"time"
 )
@@ -51,36 +51,24 @@ func initInfluxDB() {
 	influxDBWriteAPI = influxDBClient.WriteAPIBlocking(influxorg, influxbck)
 }
 
-func initTeamInfoMapFromDatabase() error {
-	username := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	dbname := os.Getenv("DB_NAME")
-	dbport := os.Getenv("DB_PORT")
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(127.0.0.1:%s)/%s", username, password, dbport, dbname))
+func loadTeamInfoFromFile() error {
+	data, err := ioutil.ReadFile("Team_info.txt")
 	if err != nil {
 		return err
 	}
-	defer db.Close()
-
-	rows, err := db.Query("SELECT teamstoken, teamsname, bow FROM teams")
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
 
 	TeamInfoMap = make(map[string]TeamInfo)
 
-	for rows.Next() {
-		var token, name string
-		var number int
-		err := rows.Scan(&token, &name, &number)
-		if err != nil {
-			return err
-		}
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		fields := strings.Split(line, ":")
+		if len(fields) == 2 {
+			token := fields[0]
+			name := fields[1]
 
-		TeamInfoMap[token] = TeamInfo{
-			Name:   name,
-			Number: number,
+			TeamInfoMap[token] = TeamInfo{
+				Name:   name,
+			}
 		}
 	}
 
@@ -88,9 +76,9 @@ func initTeamInfoMapFromDatabase() error {
 }
 
 func main() {
-	err := initTeamInfoMapFromDatabase()
+	err := loadTeamInfoFromFile()
 	if err != nil {
-		log.Fatalf("Erreur lors de l'initialisation de TeamInfoMap depuis la base de données : %v", err)
+		log.Fatalf("Erreur lors de l'initialisation de TeamInfoMap depuis le fichier : %v", err)
 	}
 
 	app := fiber.New()
