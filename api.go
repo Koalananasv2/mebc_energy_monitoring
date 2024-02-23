@@ -7,6 +7,7 @@ import (
 	"os"
 	"io/ioutil"
 	"strings"
+	"reflect"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -16,21 +17,8 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
 	"regexp"
 	"time"
+	"monitoring/api/team_data_struct"
 )
-
-// Model structure
-type SensorData struct {
-	Temp1   float32 `json:"temp1"`
-	Temp2   float32 `json:"temp2"`
-	Temp3   float32 `json:"temp3"`
-	Temp4   float32 `json:"temp4"`
-	Temp5   float32 `json:"temp5"`
-	Voltage float32 `json:"voltage"`
-	Current float32 `json:"current"`
-	Lat     float64 `json:"lat"`
-	Lon     float64 `json:"lon"`
-	Team    string  `json:"team"`
-}
 
 var influxDBClient influxdb2.Client
 var influxDBWriteAPI api.WriteAPIBlocking
@@ -101,50 +89,59 @@ func main() {
 
 // Create monitoring data
 func createMonitoringData(c *fiber.Ctx) error {
-	var sensorData SensorData
-	if err := c.BodyParser(&sensorData); err != nil {
+
+	//extract team info
+	var request struct {
+		Team string `json:"team"`
+	}
+	if err := c.BodyParser(&request); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Bad Request",
+			"error": "Bad Request Team",
 		})
 	}
-
 	// Vérifier que le champ Team ne contient que des lettres ou des chiffres
-	if !ValidationRegex.MatchString(sensorData.Team) {
+	if !ValidationRegex.MatchString(request.Team) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid Team format. Only letters and numbers are allowed.",
 		})
 	}
 
-	// Vérifier si le token de l'équipe existe dans la map
-	if teamInfo, ok := TeamInfoMap[sensorData.Team]; ok {
+	var sensorData team_data_struct.SensorDataInterface
+
+	if teamInfo, ok := TeamInfoMap[request.Team]; ok {
+		if teamInfo.Name == "Technico Solar Boat"{
+			sensorData = &team_data_struct.TSBSensorData{}
+		} else {
+            sensorData = &team_data_struct.GenericSensorData{}
+        }
+		if err := c.BodyParser(&sensorData); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Bad Request Data",
+			})
+		}
 		// Si oui, mettre à jour les champs Team avec les informations correspondantes
-		sensorData.Team = teamInfo.Name
+		if voltage := sensorData.GetVoltage(); voltage != nil && sensorData.GetCurrent() != nil {
+			result := *voltage * *sensorData.GetCurrent()
+			sensorData.SetPower(result)
+		}
 
-		tp1 := fmt.Sprintf("%s%s", "temp1_", sensorData.Team)
-		tp2 := fmt.Sprintf("%s%s", "temp2_", sensorData.Team)
-		tp3 := fmt.Sprintf("%s%s", "temp3_", sensorData.Team)
-		tp4 := fmt.Sprintf("%s%s", "temp4_", sensorData.Team)
-		tp5 := fmt.Sprintf("%s%s", "temp5_", sensorData.Team)
-		volt := fmt.Sprintf("%s%s", "voltage_", sensorData.Team)
-		curr := fmt.Sprintf("%s%s", "current_", sensorData.Team)
-		lat := fmt.Sprintf("%s%s", "lat_", sensorData.Team)
-		lon := fmt.Sprintf("%s%s", "lon_", sensorData.Team)
-		pow := fmt.Sprintf("%s%s", "power_", sensorData.Team)
+		point := write.NewPointWithMeasurement("monitoring_data")
+		sensorDataValue := reflect.ValueOf(sensorData).Elem() // Assurez-vous que sensorData est déjà un pointeur
+		sensorDataType := sensorDataValue.Type()
 
-		// Ajouter le numéro de l'équipe à la base de données
-		point := write.NewPointWithMeasurement("monitoring_data").
-				AddField(tp1, sensorData.Temp1).
-				AddField(tp2, sensorData.Temp2).
-				AddField(tp3, sensorData.Temp3).
-				AddField(tp4, sensorData.Temp4).
-				AddField(tp5, sensorData.Temp5).
-				AddField(volt, sensorData.Voltage).
-				AddField(curr, sensorData.Current).
-				AddField(lat, sensorData.Lat).
-				AddField(lon, sensorData.Lon).
-				AddField(pow, sensorData.Voltage * sensorData.Current).
-				SetTime(time.Now())
+		for i := 0; i < sensorDataType.NumField(); i++ {
+			field := sensorDataType.Field(i)
+			fieldValue := sensorDataValue.Field(i)
 
+			// Vérifiez si le champ est non-nil et non-Team avant de l'ajouter
+			if !fieldValue.IsNil() {
+				// Utilisez le nom du champ JSON pour le nom du champ InfluxDB
+				jsonTag := field.Tag.Get("json")
+				point.AddField(jsonTag, fieldValue.Elem().Interface()) // Utilisez Elem() pour obtenir la valeur pour les types pointeur
+			}
+		}
+
+		point = point.SetTime(time.Now())
 		// Écrire le point dans InfluxDB
 		err := influxDBWriteAPI.WritePoint(context.Background(), point)
 		if err != nil {
@@ -159,5 +156,5 @@ func createMonitoringData(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(sensorData)
+	return c.SendStatus(fiber.StatusOK)
 }
