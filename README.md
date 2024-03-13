@@ -45,6 +45,7 @@ sudo systemctl daemon-reload
 sudo systemctl start grafana-server
 sudo systemctl enable grafana-server.service
 ```
+go to http://localhost:3000/
 admin:admin
 ![image](https://github.com/Koalananasv2/mebc_energy_monitoring/assets/152738791/533ddd72-4efc-4dd3-b2d8-ad4746ec511b)
 ![image](https://github.com/Koalananasv2/mebc_energy_monitoring/assets/152738791/49878eab-6934-49a9-8bf7-cc4972fa45ad)
@@ -53,7 +54,7 @@ admin:admin
 https://go.dev/doc/install
 download the good version on https://go.dev/dl/
 ```sh
-cd [download directory]
+curl -O -L https://go.dev/dl/go1.22.1.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go1.22.1.linux-amd64.tar.gz
 rm go1.22.1.linux-amd64.tar.gz
 export PATH=$PATH:/usr/local/go/bin
@@ -74,8 +75,12 @@ cd mebc_energy_monitoring/
 ### Install service to run the api on startup
 
 Put the following service in the new file /etc/systemd/system/REST-MEBCV2.service
-adapt the "User" and the "WorkingDirectory" and the "INFLUXDB_TOKEN"
 ```sh
+sudo nano /etc/systemd/system/REST-MEBCV2.service
+ ```
+
+adapt the "User" and the "WorkingDirectory" and the "INFLUXDB_TOKEN"
+```ini
 [Unit]
 Description=REST API for MEBC monitoring
 #After=influxd.service
@@ -98,54 +103,68 @@ RestartSec=3
 [Install]
 WantedBy=multi-user.target
 ```
-
-
-
-
-The interface with the API is a simple REST API with only the POST method exposed.
-
-Using Curl command:
+enable and check status
 ```sh
-curl --location 'http://[IP]:[PORT]/monitoringdata/' \
+sudo systemctl enable REST-MEBCV2.service
+sudo systemctl start REST-MEBCV2.service
+sudo journalctl -xefu REST-MEBCV2.service #to monitore requests
+```
+
+### Push a monitoring command using
+Using CURL
+```sh
+curl --location 'http://localhost:30001/monitoringdata/' \
 --header 'Content-Type: application/json' \
 --data '{
-    "temp1": 39.55,
-    "temp2": 34.53,
-    "temp3": 34.35,
-    "voltage": 54.78,
-    "current": 167.16,
-    "lat": 7.4423319,
-    "lon": 43.7412106,
-    "team": "pC9rVUr9F3WV7TX3qF584hUcuzh2WXxA"
+  "generic1_temp1": 25.5,
+  "generic1_temp2": 30.2,
+  "generic1_temp3": 25.5,
+  "generic1_temp4": 30.2,
+  "generic1_temp5": 60,
+  "generic1_voltage": 56,
+  "generic1_current": 200.23,
+  "generic1_lat": 48.8566,
+  "generic1_lon": 2.3522,
+  "team": "gxv3AWTxzmJEHUCaQz5AW3wyhAWsUQ5X"
 }'
 ```
 
 Using Python3
 ```python
 import requests
-URL = "http://[IP]:[PORT]/monitoringdata/"
+URL = "http://localhost:30001/monitoringdata/"
 PARAMS  = {
-    "temp1": 39.55,
-    "temp2": 34.53,
-    "temp3": 34.35,
-    "temp4": 54.78,
-    "temp5": 60.02,
-    "voltage": 54.78,
-    "current": 167.16,
-    "lat": 7.4423319,
-    "lon": 43.7412106,
-    "team": "pC9rVUr9F3WV7TX3qF584hUcuzh2WXxA"
+  "generic1_temp1": 25.5,
+  "generic1_temp2": 30.2,
+  "generic1_temp3": 25.5,
+  "generic1_temp4": 30.2,
+  "generic1_temp5": 60,
+  "generic1_voltage": 56,
+  "generic1_current": 200.23,
+  "generic1_lat": 48.8566,
+  "generic1_lon": 2.3522,
+  "team": "gxv3AWTxzmJEHUCaQz5AW3wyhAWsUQ5X"
 }
 r = requests.post(url = URL, json = PARAMS)
 ```
 
-## Dashboard
+### Create a visualization
+Create a Dashboard
+Create a Visualisation
+Set the influx command as follow for the temperature1 info:
+```
+from(bucket: "mybucket")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "monitoring_data")
+  |> filter(fn: (r) => r["_field"] == "generic1_temp1")
+  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+  |> yield(name: "mean")
+```
 
-Dashboard is rendered with Grafana. Credential will be provided to each teams.
-_Data below are random_
-![Dashboard](https://s5.gifyu.com/images/SiSOF.gif)
+## Dashboard
+![image](https://github.com/Koalananasv2/mebc_energy_monitoring/assets/152738791/9a236483-e518-4a14-beed-1ce56b7d07fb)
+
 
 ## API architecture
-
 The archicture of the monitoring service is developed as follow:
-![APIarchicture](https://github.com/Koalananasv2/mebc_energy_monitoring/blob/master/architecture.jpg?raw=true)
+![APIarchicture](https://github.com/Koalananasv2/mebc_energy_monitoring/blob/master/architecture.png?raw=true)
