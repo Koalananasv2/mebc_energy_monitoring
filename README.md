@@ -149,9 +149,9 @@ PARAMS  = {
 r = requests.post(url = URL, json = PARAMS)
 ```
 
-### Create a visualization
-Create a Dashboard
-Create a Visualisation
+### Create a visualization<br />
+Create a Dashboard<br />
+Create a Visualisation<br />
 Set the influx command as follow for the temperature1 info:
 ```
 from(bucket: "mybucket")
