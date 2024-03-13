@@ -46,13 +46,13 @@ func (g *GenericSensorData) GetVoltage() *float32        { return g.Voltage }
 func (g *GenericSensorData) GetCurrent() *float32        { return g.Current }
 
 type GenericSensorDataDualPower struct {
-	Temp1   		*float32 `json:"generic2_temp1"`
-	Temp2   		*float32 `json:"generic2_temp2"`
+  Temp1   		*float32 `json:"generic2_temp1"`
+  Temp2   		*float32 `json:"generic2_temp2"`
   Temp3           *float32 `json:"generic2_temp3"`
-	Voltage1        *float32 `json:"generic2_voltage1"`
+  Voltage1        *float32 `json:"generic2_voltage1"`
   Voltage2        *float32 `json:"generic2_voltage2"`
   Voltage3        *float32 `json:"generic2_voltage3"`
-	Current1        *float32 `json:"generic2_current1"`
+  Current1        *float32 `json:"generic2_current1"`
   Current2        *float32 `json:"generic2_current2"`
   Current3        *float32 `json:"generic2_current3"`
   Power           *float32 `json:"generic2_power"`			// compute automaticaly
@@ -66,15 +66,15 @@ func (g *GenericSensorDataDualPower) GetVoltage() *float32        { return g.Vol
 func (g *GenericSensorDataDualPower) GetCurrent() *float32        { return g.Current3 }
 
 type GenericSensorDataQuadPower struct {
-	Temp1           *float32 `json:"generic3_temp1"`
+  Temp1           *float32 `json:"generic3_temp1"`
   Temp2           *float32 `json:"generic3_temp2"`
   Temp3           *float32 `json:"generic3_temp3"`
   Temp4           *float32 `json:"generic3_temp4"`
-	Voltage1        *float32 `json:"generic3_voltage1"`
+  Voltage1        *float32 `json:"generic3_voltage1"`
   Voltage2        *float32 `json:"generic3_voltage2"`
   Voltage3        *float32 `json:"generic3_voltage3"`
   Voltage4        *float32 `json:"generic3_voltage4"`
-	Current1        *float32 `json:"generic3_current1"`
+  Current1        *float32 `json:"generic3_current1"`
   Current2        *float32 `json:"generic3_current2"`
   Current3        *float32 `json:"generic3_current3"`
   Current4        *float32 `json:"generic3_current3"`
