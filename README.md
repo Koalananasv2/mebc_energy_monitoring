@@ -28,7 +28,7 @@ sudo dpkg -i influxdb2_2.7.5-1_amd64.deb
 sudo rm influxdb2_2.7.5-1_amd64.deb
 sudo service influxdb start
 ```
-go to https://localhost:8086 (open firewall if needed)
+Wait up to 1 minute and then go to http://localhost:8086 (open firewall if needed)
 ![image](https://github.com/Koalananasv2/mebc_energy_monitoring/assets/152738791/594abd1e-8fa3-44b1-948b-e3cb999441f3)
 Save the API token
 
@@ -45,9 +45,10 @@ sudo systemctl daemon-reload
 sudo systemctl start grafana-server
 sudo systemctl enable grafana-server.service
 ```
-go to http://localhost:3000/
-admin:admin
+Wait up to 1 minute and then go to http://localhost:3000/
+admin:admin.
 ![image](https://github.com/Koalananasv2/mebc_energy_monitoring/assets/152738791/533ddd72-4efc-4dd3-b2d8-ad4746ec511b)
+retype the default url
 ![image](https://github.com/Koalananasv2/mebc_energy_monitoring/assets/152738791/49878eab-6934-49a9-8bf7-cc4972fa45ad)
 
 ### Install GOLANG
@@ -62,14 +63,13 @@ export PATH=$PATH:/usr/local/go/bin
 
 ### Install GIT
 ```sh
-sudo apt get git
+sudo apt install git
 ```
 
 ### Install the monitoring API
 ```sh
 cd 
 git clone https://github.com/Koalananasv2/mebc_energy_monitoring.git
-cd mebc_energy_monitoring/
 ```
 
 ### Install service to run the api on startup
@@ -113,7 +113,7 @@ sudo journalctl -xefu REST-MEBCV2.service #to monitore requests
 ### Push a monitoring command using
 Using CURL
 ```sh
-curl --location 'http://localhost:30001/monitoringdata/' \
+curl --location 'http://localhost:3001/monitoringdata/' \
 --header 'Content-Type: application/json' \
 --data '{
   "generic1_temp1": 25.5,
@@ -132,7 +132,7 @@ curl --location 'http://localhost:30001/monitoringdata/' \
 Using Python3
 ```python
 import requests
-URL = "http://localhost:30001/monitoringdata/"
+URL = "http://localhost:3001/monitoringdata/"
 PARAMS  = {
   "generic1_temp1": 25.5,
   "generic1_temp2": 30.2,
